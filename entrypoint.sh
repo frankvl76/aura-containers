@@ -76,7 +76,12 @@ for repo in json.load(sys.stdin):
         display_url = re.sub(r'://[^@]+@', '://***@', url) if token else url
         print(f'  cloning {display_url} -> {path}', flush=True)
         os.makedirs(path, exist_ok=True)
-        subprocess.run(['git', 'clone', '-b', branch, url, path], check=True)
+        result = subprocess.run(['git', 'clone', '-b', branch, url, path], capture_output=True, text=True)
+        if result.returncode != 0:
+            # Don't leak tokens in error output
+            err = re.sub(r'://[^@]+@', '://***@', result.stderr)
+            print(f'  ERROR: git clone failed: {err.strip()}', flush=True)
+            raise SystemExit(1)
 "
     echo "✓ Repositories ready"
 else

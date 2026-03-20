@@ -6,7 +6,7 @@ echo "── Aura Agent starting ──"
 # ── 1. Start ttyd web terminal (background) ──
 TTYD_USER="${TTYD_USER:-admin}"
 TTYD_PASS="${TTYD_PASS:-admin}"
-ttyd -p 7681 -c "${TTYD_USER}:${TTYD_PASS}" /bin/bash &
+ttyd -W -p 7681 -c "${TTYD_USER}:${TTYD_PASS}" /bin/bash &
 echo "✓ Web terminal running on port 7681"
 
 # ── 2. Authentication ──

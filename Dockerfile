@@ -34,6 +34,7 @@ RUN pip3 install --no-cache-dir --break-system-packages \
 
 # ── Entrypoint + helpers ──
 COPY entrypoint.sh /opt/aura/entrypoint.sh
+COPY claude-auth.py /opt/aura/claude-auth.py
 COPY generate-subscription.py /opt/aura/generate-subscription.py
 RUN chmod +x /opt/aura/entrypoint.sh
 

@@ -3,27 +3,37 @@ set -e
 
 echo "── Aura Agent starting ──"
 
-# ── 1. Authentication ──
+# ── 1. Start ttyd web terminal (background) ──
+TTYD_USER="${TTYD_USER:-admin}"
+TTYD_PASS="${TTYD_PASS:-admin}"
+ttyd -p 7681 -c "${TTYD_USER}:${TTYD_PASS}" /bin/bash &
+echo "✓ Web terminal running on port 7681"
+
+# ── 2. Authentication ──
 if [ "${CLI_TOOL:-claude}" = "claude" ]; then
     if claude auth status > /dev/null 2>&1; then
         echo "✓ Claude Code: authenticated"
     else
-        echo "⏳ Claude Code: not authenticated, starting login flow..."
+        echo "⏳ Claude Code: not authenticated"
+        echo "   Use the web terminal to run: claude auth login"
 
-        # Run claude auth login with a PTY, capture URL, post to Aura, poll for code, feed it back
-        python3 -u /opt/aura/claude-auth.py
+        # Report awaiting-auth status to Aura
+        curl -s -X POST "$AURA_URL/api/containers/$CONTAINER_ID/heartbeat" \
+          -H "Authorization: Bearer $AURA_API_KEY" \
+          -H "Content-Type: application/json" \
+          -d '{"awaitingAuth": true}' || true
 
-        if ! claude auth status > /dev/null 2>&1; then
-            echo "ERROR: Authentication failed after login flow"
-            exit 1
-        fi
+        # Wait until authenticated (admin will auth via ttyd)
+        while ! claude auth status > /dev/null 2>&1; do
+            sleep 5
+        done
         echo "✓ Claude Code: authenticated"
     fi
 else
     echo "✓ CLI tool: ${CLI_TOOL} (API key auth, no interactive login needed)"
 fi
 
-# ── 2. SSH keys ──
+# ── 3. SSH keys ──
 mkdir -p ~/.ssh
 ssh-keyscan github.com gitlab.com >> ~/.ssh/known_hosts 2>/dev/null || true
 
@@ -38,7 +48,7 @@ else
     echo "– No SSH keys mounted"
 fi
 
-# ── 3. Clone or pull repositories ──
+# ── 4. Clone or pull repositories ──
 if [ -n "$GIT_REPOS" ] && [ "$GIT_REPOS" != "[]" ]; then
     echo "$GIT_REPOS" | python3 -c "
 import json, sys, subprocess, os
@@ -59,8 +69,7 @@ else
     echo "– No repositories configured"
 fi
 
-# ── 4. Configure MCP server ──
-# Write .env for the MCP server
+# ── 5. Configure MCP server ──
 cat > /opt/aura/mcp-server/.env <<EOF
 AURA_URL=$AURA_URL
 AURA_API_KEY=$AURA_API_KEY
@@ -71,19 +80,16 @@ if [ "${CLI_TOOL:-claude}" = "claude" ]; then
     echo "✓ MCP server registered"
 fi
 
-# ── 5. Generate configuration files ──
-# Write .env for the SignalR client
+# ── 6. Generate configuration files ──
 cat > /opt/aura/signalr-client/.env <<EOF
 KANBAN_URL=$AURA_URL
 API_KEY=$AURA_API_KEY
 PORT=${SIGNALR_CLIENT_PORT:-9002}
 EOF
 
-# Generate subscription.json from env vars
 python3 /opt/aura/generate-subscription.py
 echo "✓ Subscription config generated"
 
-# Generate cli_tools.json
 python3 -c "
 import json
 config = {
@@ -98,7 +104,7 @@ with open('/opt/aura/signalr-client/cli_tools.json', 'w') as f:
 "
 echo "✓ CLI tools config generated"
 
-# ── 6. Start SignalR client ──
+# ── 7. Start SignalR client ──
 echo "── Starting SignalR client ──"
 cd /opt/aura/signalr-client
 exec python3 signalr_receiver.py

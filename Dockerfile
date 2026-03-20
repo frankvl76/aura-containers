@@ -21,6 +21,10 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 # ── Claude Code CLI ──
 RUN npm install -g @anthropic-ai/claude-code
 
+# ── ttyd (web terminal) ──
+RUN apt-get update && apt-get install -y --no-install-recommends ttyd \
+    && rm -rf /var/lib/apt/lists/*
+
 # ── Clone SignalR client and MCP server from GitHub (private repos) ──
 RUN --mount=type=secret,id=github_token \
     GITHUB_TOKEN=$(cat /run/secrets/github_token) \

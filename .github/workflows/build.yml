@@ -16,6 +16,8 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - uses: docker/setup-buildx-action@v3
+
       - uses: docker/build-push-action@v5
         with:
           context: .
@@ -23,3 +25,5 @@ jobs:
           tags: |
             frankvl76gmail/aura-agent:latest
             frankvl76gmail/aura-agent:${{ github.sha }}
+          secrets: |
+            github_token=${{ secrets.GH_PAT }}

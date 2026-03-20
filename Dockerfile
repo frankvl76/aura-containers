@@ -21,9 +21,11 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 # ── Claude Code CLI ──
 RUN npm install -g @anthropic-ai/claude-code
 
-# ── Clone SignalR client and MCP server from GitHub ──
-RUN git clone https://github.com/frankvl76/aura-signalr-client.git /opt/aura/signalr-client \
-    && git clone https://github.com/frankvl76/aura-mcp-server.git /opt/aura/mcp-server
+# ── Clone SignalR client and MCP server from GitHub (private repos) ──
+RUN --mount=type=secret,id=github_token \
+    GITHUB_TOKEN=$(cat /run/secrets/github_token) \
+    && git clone https://x-access-token:${GITHUB_TOKEN}@github.com/frankvl76/aura-signalr-client.git /opt/aura/signalr-client \
+    && git clone https://x-access-token:${GITHUB_TOKEN}@github.com/frankvl76/aura-mcp-server.git /opt/aura/mcp-server
 
 # ── Install Python dependencies ──
 RUN pip3 install --no-cache-dir --break-system-packages \

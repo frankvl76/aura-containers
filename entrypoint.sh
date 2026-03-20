@@ -50,17 +50,31 @@ fi
 
 # ── 4. Clone or pull repositories ──
 if [ -n "$GIT_REPOS" ] && [ "$GIT_REPOS" != "[]" ]; then
-    echo "$GIT_REPOS" | python3 -c "
-import json, sys, subprocess, os
+    echo "$GIT_REPOS" | python3 -u -c "
+import json, sys, subprocess, os, re
 for repo in json.load(sys.stdin):
     path = repo['localPath']
     url  = repo['cloneUrl']
     branch = repo.get('branch', 'main')
+    token = repo.get('accessToken')
+
+    # If we have an access token and the URL is SSH, convert to HTTPS
+    if token and url.startswith('git@'):
+        # git@github.com:org/repo.git -> https://x-access-token:{token}@github.com/org/repo.git
+        match = re.match(r'git@([^:]+):(.+)', url)
+        if match:
+            url = f'https://x-access-token:{token}@{match.group(1)}/{match.group(2)}'
+    elif token and url.startswith('https://'):
+        # Insert token into HTTPS URL
+        url = url.replace('https://', f'https://x-access-token:{token}@')
+
     if os.path.exists(os.path.join(path, '.git')):
-        print(f'  pulling {path}')
+        print(f'  pulling {path}', flush=True)
         subprocess.run(['git', '-C', path, 'pull', '--ff-only'], check=False)
     else:
-        print(f'  cloning {url} → {path}')
+        # Don't print token in logs
+        display_url = re.sub(r'://[^@]+@', '://***@', url) if token else url
+        print(f'  cloning {display_url} -> {path}', flush=True)
         os.makedirs(path, exist_ok=True)
         subprocess.run(['git', 'clone', '-b', branch, url, path], check=True)
 "

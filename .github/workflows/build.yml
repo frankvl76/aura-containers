@@ -21,7 +21,7 @@ jobs:
           context: .
           push: true
           tags: |
-            frankvl76/aura-agent:latest
-            frankvl76/aura-agent:${{ github.sha }}
+            frankvl76gmail/aura-agent:latest
+            frankvl76gmail/aura-agent:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
